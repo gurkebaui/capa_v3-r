@@ -1,0 +1,5 @@
+# requirements.txt
+chromadb
+sentence-transformers
+watchdog
+msgpack
