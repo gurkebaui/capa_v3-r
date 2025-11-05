@@ -7,6 +7,10 @@
 #include <vector>
 #include <unordered_map>
 #include <msgpack.hpp>
+#include <pybind11/pybind11.h> 
+#include <pybind11/stl.h>
+
+namespace pybind11 { class dict; }
 
 struct Node {
     int id;
@@ -36,6 +40,7 @@ public:
 
     // Schreibt einen JSON-String in die Journal-Datei (Aufgabe 2)
     void log_to_ltm(const std::string& journal_path, const std::string& json_data);
+    bool should_store_in_stm(const std::string& label, const pybind11::dict& metadata);
 
 private:
     std::unordered_map<int, Node> nodes;

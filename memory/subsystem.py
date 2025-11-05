@@ -23,7 +23,7 @@ class MemorySubsystem:
         
         self.collection = client.get_or_create_collection(
             name=collection_name,
-            embedding_function=self.sentence_transformer
+            embedding_function=self.sentence_transformer # type: ignore
         )
         logging.info(f"ChromaDB collection '{collection_name}' loaded/created.")
 
@@ -54,7 +54,7 @@ class MemorySubsystem:
                 query_texts=[query_text],
                 n_results=n_results
             )
-            return results
+            return results # type: ignore
         except Exception as e:
             logging.error(f"Failed to query ChromaDB: {e}")
             # Return a dict with empty lists to maintain type consistency

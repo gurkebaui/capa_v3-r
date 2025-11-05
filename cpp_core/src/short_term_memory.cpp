@@ -13,6 +13,32 @@ int ShortTermMemory::add_node(const std::string& label) {
     return id;
 }
 
+bool ShortTermMemory::should_store_in_stm(const std::string& label, const pybind11::dict& metadata) {
+    const std::vector<std::string> irrelevant_keywords = {"rauschen", "unwichtig", "irrelevant"};
+
+    // Prüfe das Label
+    for (const auto& keyword : irrelevant_keywords) {
+        if (label.find(keyword) != std::string::npos) {
+            return false; // Keyword im Label gefunden
+        }
+    }
+
+    // Prüfe die Metadaten-Werte
+    for (auto item : metadata) {
+        // Wir prüfen nur Werte, die Strings sind
+        if (pybind11::isinstance<pybind11::str>(item.second)) {
+            std::string value = item.second.cast<std::string>();
+            for (const auto& keyword : irrelevant_keywords) {
+                if (value.find(keyword) != std::string::npos) {
+                    return false; // Keyword in einem Metadaten-Wert gefunden
+                }
+            }
+        }
+    }
+
+    return true; // Keine irrelevanten Keywords gefunden
+}
+
 void ShortTermMemory::add_edge(int from_id, int to_id, float weight) {
     if (nodes.find(from_id) == nodes.end() || nodes.find(to_id) == nodes.end()) {
         throw std::runtime_error("Node ID not found.");
