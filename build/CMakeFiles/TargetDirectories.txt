@@ -1,0 +1,5 @@
+C:/Users/Henry/Documents/capa_v3-r/build/CMakeFiles/capa_core.dir
+C:/Users/Henry/Documents/capa_v3-r/build/CMakeFiles/edit_cache.dir
+C:/Users/Henry/Documents/capa_v3-r/build/CMakeFiles/rebuild_cache.dir
+C:/Users/Henry/Documents/capa_v3-r/build/vendor/pybind11/CMakeFiles/edit_cache.dir
+C:/Users/Henry/Documents/capa_v3-r/build/vendor/pybind11/CMakeFiles/rebuild_cache.dir

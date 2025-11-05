@@ -1,0 +1,222 @@
+{
+	"configurations" : 
+	[
+		{
+			"abstractTargets" : 
+			[
+				{
+					"directoryIndex" : 1,
+					"id" : "Python::Interpreter::@27da6f0e727588119189",
+					"jsonFile" : "target-Python__Interpreter-Debug-4994ac368aa5995cb370.json",
+					"name" : "Python::Interpreter",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "Python::InterpreterMultiConfig::@27da6f0e727588119189",
+					"jsonFile" : "target-Python__InterpreterMultiConfig-Debug-562f2be4b263765c1773.json",
+					"name" : "Python::InterpreterMultiConfig",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "Python::Module::@27da6f0e727588119189",
+					"jsonFile" : "target-Python__Module-Debug-956931f30bb533b0a73d.json",
+					"name" : "Python::Module",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "Python::Python::@27da6f0e727588119189",
+					"jsonFile" : "target-Python__Python-Debug-0d49ab0e4d94b7f35d6f.json",
+					"name" : "Python::Python",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "pybind11::embed::@27da6f0e727588119189",
+					"jsonFile" : "target-pybind11__embed-Debug-09e8fd78a8b433afdbe3.json",
+					"name" : "pybind11::embed",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "pybind11::lto::@27da6f0e727588119189",
+					"jsonFile" : "target-pybind11__lto-Debug-2501b009ef634985139c.json",
+					"name" : "pybind11::lto",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "pybind11::module::@27da6f0e727588119189",
+					"jsonFile" : "target-pybind11__module-Debug-3591eb5068db4a4eeb50.json",
+					"name" : "pybind11::module",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "pybind11::opt_size::@27da6f0e727588119189",
+					"jsonFile" : "target-pybind11__opt_size-Debug-5778c8f6e3d8e4f0d528.json",
+					"name" : "pybind11::opt_size",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "pybind11::pybind11::@27da6f0e727588119189",
+					"jsonFile" : "target-pybind11__pybind11-Debug-35ed0cc519faffccd270.json",
+					"name" : "pybind11::pybind11",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "pybind11::python_headers::@27da6f0e727588119189",
+					"jsonFile" : "target-pybind11__python_headers-Debug-d9aaf5d737a03e9cec49.json",
+					"name" : "pybind11::python_headers",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "pybind11::python_link_helper::@27da6f0e727588119189",
+					"jsonFile" : "target-pybind11__python_link_helper-Debug-d534b83da25214647ae4.json",
+					"name" : "pybind11::python_link_helper",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "pybind11::thin_lto::@27da6f0e727588119189",
+					"jsonFile" : "target-pybind11__thin_lto-Debug-c35e1372bccec5acd1e8.json",
+					"name" : "pybind11::thin_lto",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "pybind11::windows_extras::@27da6f0e727588119189",
+					"jsonFile" : "target-pybind11__windows_extras-Debug-325d49d1745494a3342a.json",
+					"name" : "pybind11::windows_extras",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "pybind11_headers::@27da6f0e727588119189",
+					"jsonFile" : "target-pybind11_headers-Debug-b7d6304551fb87f2d041.json",
+					"name" : "pybind11_headers",
+					"projectIndex" : 1
+				}
+			],
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1
+					],
+					"jsonFile" : "directory-.-Debug-f6f22219c74102c3da70.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"abstractTargetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13
+					],
+					"build" : "vendor/pybind11",
+					"jsonFile" : "directory-vendor.pybind11-Debug-e436430791d26defcbc9.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 1,
+					"source" : "vendor/pybind11"
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1
+					],
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "capa_core",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"abstractTargetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13
+					],
+					"directoryIndexes" : 
+					[
+						1
+					],
+					"name" : "pybind11",
+					"parentIndex" : 0
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "capa_core::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-capa_core-Debug-69eaa1ee5ee68a0b0a68.json",
+					"name" : "capa_core",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "C:/Users/Henry/Documents/capa_v3-r/build",
+		"source" : "C:/Users/Henry/Documents/capa_v3-r/cpp_core"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 9
+	}
+}

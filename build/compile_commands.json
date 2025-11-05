@@ -1,0 +1,14 @@
+[
+{
+  "directory": "C:/Users/Henry/Documents/capa_v3-r/build",
+  "command": "C:\\TDM-GCC-64\\bin\\g++.exe -DPy_NO_LINK_LIB -Dcapa_core_EXPORTS -IC:/Users/Henry/Documents/capa_v3-r/cpp_core/src -IC:/Users/Henry/Documents/capa_v3-r/cpp_core/vendor/msgpack-c/include -isystem C:/Users/Henry/AppData/Local/Programs/Python/Python310/Include -isystem C:/Users/Henry/Documents/capa_v3-r/cpp_core/vendor/pybind11/include -g -std=gnu++17 -fvisibility=hidden -o CMakeFiles\\capa_core.dir\\src\\main.cpp.obj -c C:\\Users\\Henry\\Documents\\capa_v3-r\\cpp_core\\src\\main.cpp",
+  "file": "C:/Users/Henry/Documents/capa_v3-r/cpp_core/src/main.cpp",
+  "output": "C:/Users/Henry/Documents/capa_v3-r/build/CMakeFiles/capa_core.dir/src/main.cpp.obj"
+},
+{
+  "directory": "C:/Users/Henry/Documents/capa_v3-r/build",
+  "command": "C:\\TDM-GCC-64\\bin\\g++.exe -DPy_NO_LINK_LIB -Dcapa_core_EXPORTS -IC:/Users/Henry/Documents/capa_v3-r/cpp_core/src -IC:/Users/Henry/Documents/capa_v3-r/cpp_core/vendor/msgpack-c/include -isystem C:/Users/Henry/AppData/Local/Programs/Python/Python310/Include -isystem C:/Users/Henry/Documents/capa_v3-r/cpp_core/vendor/pybind11/include -g -std=gnu++17 -fvisibility=hidden -o CMakeFiles\\capa_core.dir\\src\\short_term_memory.cpp.obj -c C:\\Users\\Henry\\Documents\\capa_v3-r\\cpp_core\\src\\short_term_memory.cpp",
+  "file": "C:/Users/Henry/Documents/capa_v3-r/cpp_core/src/short_term_memory.cpp",
+  "output": "C:/Users/Henry/Documents/capa_v3-r/build/CMakeFiles/capa_core.dir/src/short_term_memory.cpp.obj"
+}
+]

@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/Henry/Documents/capa_v3-r/build/cmake_install.cmake",
+		"C:/Users/Henry/Documents/capa_v3-r/build/vendor/pybind11/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

@@ -4,3 +4,4 @@
 [submodule "cpp_core/vendor/msgpack-c"]
 	path = cpp_core/vendor/msgpack-c
 	url = https://github.com/msgpack/msgpack-c.git
+	branch = cpp-1.4

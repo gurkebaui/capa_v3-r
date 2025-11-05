@@ -1,27 +1,32 @@
-# memory/listener.py
+# memory/listener.py (FINAL, POLLING VERSION)
 
 import time
 import json
 import logging
-from watchdog.observers import Observer
+import os
+# --- DIE ÄNDERUNG: Wir importieren den PollingObserver ---
+from watchdog.observers.polling import PollingObserver as Observer 
 from watchdog.events import FileSystemEventHandler
 from memory.subsystem import MemorySubsystem
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - [LTM Listener] - %(message)s')
 
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+DEFAULT_JOURNAL_PATH = os.path.join(PROJECT_ROOT, 'journals', 'ltm_journal.wal')
+
+# ... (Der Rest der Datei ist identisch und korrekt) ...
 class JournalEventHandler(FileSystemEventHandler):
     def __init__(self, memory_subsystem: MemorySubsystem, journal_path: str):
         self.memory_subsystem = memory_subsystem
         self.journal_path = journal_path
-        # Keep track of the last read position in the file
-        try:
-            with open(self.journal_path, 'r') as f:
-                self.last_pos = f.tell()
-        except FileNotFoundError:
-            # Create the file if it doesn't exist
+        
+        if not os.path.exists(self.journal_path):
             open(self.journal_path, 'a').close()
-            self.last_pos = 0
 
+        with open(self.journal_path, 'r') as f:
+            f.seek(0, 2)
+            self.last_pos = f.tell()
+            
     def on_modified(self, event):
         if event.src_path == self.journal_path:
             self._process_new_lines()
@@ -36,40 +41,36 @@ class JournalEventHandler(FileSystemEventHandler):
 
                 for line in new_lines:
                     line = line.strip()
-                    if not line:
-                        continue
+                    if not line: continue
                     
                     try:
-                        # Validate and process the JSON object
                         data = json.loads(line)
                         if 'text' in data and 'metadata' in data:
                             self.memory_subsystem.add_experience(data['text'], data['metadata'])
                         else:
                             logging.warning(f"Invalid journal entry (missing keys): {line}")
-                    except json.JSONDecodeError:
-                        logging.error(f"Failed to decode JSON from line: {line}")
                     except Exception as e:
-                        logging.error(f"An unexpected error occurred while processing line '{line}': {e}")
+                        logging.error(f"Error processing line '{line}': {e}")
                 
-                # Update last position to the end of the file
                 self.last_pos = f.tell()
         except FileNotFoundError:
              logging.error(f"Journal file not found at {self.journal_path}")
 
 
-def run_ltm_listener(journal_path: str = "journals/ltm_journal.wal"):
-    """
-    Starts the listener process that monitors the journal file.
-    """
+def run_ltm_listener(journal_path: str = DEFAULT_JOURNAL_PATH):
     logging.info("Starting LTM Listener Process...")
+    journal_dir = os.path.dirname(journal_path)
+    os.makedirs(journal_dir, exist_ok=True)
+    
     memory_system = MemorySubsystem()
     event_handler = JournalEventHandler(memory_system, journal_path)
     
-    observer = Observer()
-    observer.schedule(event_handler, path='journals', recursive=False)
+    # Hier wird jetzt der PollingObserver verwendet.
+    observer = Observer() 
+    observer.schedule(event_handler, path=journal_dir, recursive=False)
     observer.start()
     
-    logging.info(f"Now monitoring '{journal_path}' for changes.")
+    logging.info(f"Now monitoring '{journal_path}' for changes via Polling.")
     
     try:
         while True:
@@ -80,5 +81,4 @@ def run_ltm_listener(journal_path: str = "journals/ltm_journal.wal"):
     logging.info("LTM Listener Process stopped.")
 
 if __name__ == "__main__":
-    # Allows running this script directly to start the listener
     run_ltm_listener()

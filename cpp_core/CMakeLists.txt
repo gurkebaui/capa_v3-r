@@ -1,24 +1,22 @@
-# cpp_core/CMakeLists.txt
+# cpp_core/CMakeLists.txt (ZWEITE KORRIGIERTE VERSION)
 
 cmake_minimum_required(VERSION 3.15)
 project(capa_core)
 
-# --- Add Submodules ---
+# --- pybind11 als Submodul einbinden ---
 add_subdirectory(vendor/pybind11)
-add_subdirectory(vendor/msgpack-c)
 
 # --- Python Module Definition ---
-# pybind11_add_module is a helper function from pybind11
-# It creates a Python extension module.
+# HIER IST DIE KORREKTUR: Wir verwenden eine Variable, um die Pfade explizit zu machen.
 pybind11_add_module(capa_core
-    src/main.cpp
-    src/short_term_memory.cpp
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/short_term_memory.cpp"
 )
 
-# --- Link Dependencies ---
+# --- Include-Pfade für Abhängigkeiten setzen ---
 target_include_directories(capa_core PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${msgpack-c_SOURCE_DIR}/include # Include path for msgpack
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/vendor/msgpack-c/include"
 )
 
 # Set C++ standard to 17 for modern features

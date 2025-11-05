@@ -45,7 +45,7 @@ class MemorySubsystem:
         except Exception as e:
             logging.error(f"Failed to add experience to ChromaDB: {e}")
 
-    def query_memories(self, query_text: str, n_results: int = 5) -> list:
+    def query_memories(self, query_text: str, n_results: int = 5) -> dict: # Was 'list'
         """
         Queries the LTM for relevant memories based on a query text.
         """
@@ -57,4 +57,5 @@ class MemorySubsystem:
             return results
         except Exception as e:
             logging.error(f"Failed to query ChromaDB: {e}")
-            return []
+            # Return a dict with empty lists to maintain type consistency
+            return {'ids': [], 'documents': [], 'metadatas': []}
