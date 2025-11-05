@@ -1,0 +1,6 @@
+[submodule "cpp_core/vendor/pybind11"]
+	path = cpp_core/vendor/pybind11
+	url = https://github.com/pybind/pybind11.git
+[submodule "cpp_core/vendor/msgpack-c"]
+	path = cpp_core/vendor/msgpack-c
+	url = https://github.com/msgpack/msgpack-c.git
