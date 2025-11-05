@@ -2,6 +2,8 @@
 
 import logging
 from memory.subsystem import MemorySubsystem
+from chromadb.api.types import QueryResult
+
 
 class MemoryAccessNetwork:
     """
@@ -39,3 +41,28 @@ class MemoryAccessNetwork:
         # Logik für Quick Search
         logging.info(f"MAN: Executing Quick Search for: '{query_text}'")
         return self.memory_subsystem.query_memories(query_text)
+    
+    def find_active_plans(self) -> list[str]:
+        """
+        Specifically queries the LTM for documents flagged as an active future plan.
+        """
+        logging.info("MAN: Searching for active future plans in LTM...")
+        try:
+            # --- KORREKTUR: Korrekte 'where' Syntax mit $and Operator ---
+            results = self.memory_subsystem.collection.get(
+                where={
+                    "$and": [
+                        {"type": "future_plan"},
+                        {"status": "active"}
+                    ]
+                }
+            )
+            plans = results.get('documents', [])
+            if plans:
+                logging.info(f"Found {len(plans)} active plan(s): {plans}")
+            else:
+                logging.info("No active plans found.")
+            return plans
+        except Exception as e:
+            logging.error(f"Error while querying for plans in LTM: {e}")
+            return []
