@@ -6,6 +6,7 @@ from affective.engine import AffectiveEngine
 from processing.layer1 import ContextEnricher
 from memory.man import MemoryAccessNetwork
 from memory.subsystem import MemorySubsystem
+from affective.logger import ActionLogger
 try:
     from capa_core import CPPCore
 except ImportError:
@@ -45,6 +46,7 @@ class Agent:
         self.context_enricher = context_enricher
         self.memory_subsystem = memory_subsystem
         self.affective_engine = AffectiveEngine()
+        self.action_logger = ActionLogger()
         self.layers = {
             3: ThinkingLayer3(cpp_core, man),
             4: ThinkingLayer4(cpp_core, man),
@@ -66,6 +68,9 @@ class Agent:
             
             # emotion_context wird nun an die think-Methode übergeben
             result = active_layer.think(current_graph, active_plans, emotion_context, internal_emotion_text)
+
+            # Loggt Aktionen für feedback-Zuordnung (spionage)
+            self.action_logger.log_action(current_layer_index, active_layer.model_name, result)
             
             if result.get("plan") and result.get("plan_type"):
                 plan_type = result["plan_type"]
@@ -140,10 +145,12 @@ class Agent:
     def reward(self, value: float):
         """Applies an external reward to the agent."""
         self.affective_engine.apply_reward(value)
+        self.action_logger.assign_feedback(value, "reward")
 
     def punish(self, value: float):
         """Applies an external punishment to the agent."""
         self.affective_engine.apply_punishment(value)
+        self.action_logger.assign_feedback(value, "punishment")
 
     def get_status(self) -> str:
         """Returns the current internal status of the agent."""

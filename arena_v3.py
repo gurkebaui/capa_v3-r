@@ -5,6 +5,7 @@ from agent import Agent
 from memory.subsystem import MemorySubsystem
 from memory.man import MemoryAccessNetwork
 from processing.layer1 import ContextEnricher
+import json
 
 try:
     import capa_core # type: ignore
@@ -94,8 +95,14 @@ def main():
             elif command == "status":
                 print(agent.get_status())
 
+            elif command == "logs":
+                all_logs = agent.action_logger.get_logs()
+                print("\n--- Action & Feedback Logs ---")
+                print(json.dumps(all_logs, indent=2))
+                print("----------------------------\n")
 
-                
+
+
 
             else:
                 print(f"Unknown command: '{command}'")
