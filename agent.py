@@ -2,6 +2,7 @@
 
 import logging
 from cognitive.layers import ThinkingLayer3, ThinkingLayer4, ThinkingLayer5
+from affective.engine import AffectiveEngine
 from processing.layer1 import ContextEnricher
 from memory.man import MemoryAccessNetwork
 from memory.subsystem import MemorySubsystem
@@ -43,6 +44,7 @@ class Agent:
         self.man = man
         self.context_enricher = context_enricher
         self.memory_subsystem = memory_subsystem
+        self.affective_engine = AffectiveEngine()
         self.layers = {
             3: ThinkingLayer3(cpp_core, man),
             4: ThinkingLayer4(cpp_core, man),
@@ -56,13 +58,14 @@ class Agent:
         recursion_counter = 0
         max_recursions = 20
         active_plans = self.man.find_active_plans()
+        internal_emotion_text = self.affective_engine.get_state_as_text()
 
         while True:
             active_layer = self.layers[current_layer_index]
             self.logger.info(f"--- Passing control to Layer {current_layer_index} ({active_layer.model_name}) ---")
             
             # emotion_context wird nun an die think-Methode übergeben
-            result = active_layer.think(current_graph, active_plans, emotion_context)
+            result = active_layer.think(current_graph, active_plans, emotion_context, internal_emotion_text)
             
             if result.get("plan") and result.get("plan_type"):
                 plan_type = result["plan_type"]
@@ -81,6 +84,7 @@ class Agent:
 
             if confidence > 90:
                 self.logger.info(f"Layer {current_layer_index} has high confidence ({confidence}%). Finalizing.")
+                self.affective_engine.apply_reward(0.1)
                 return result
             elif confidence < 40:
                 self.logger.warning(f"Layer {current_layer_index} has low confidence ({confidence}%).")
@@ -89,12 +93,14 @@ class Agent:
                     self.cpp_core.add_node(f"L{current_layer_index}_THOUGHT: {internal_monologue}")
                     current_graph = self.cpp_core.serialize_graph()
                     current_layer_index += 1
+                    self.affective_engine.apply_punishment(0.1)
                     continue
                 else:
                     self.logger.error("Reached highest layer (5) with low confidence.")
                     self.cpp_core.add_node(f"L{current_layer_index}_THOUGHT: {internal_monologue}")
                     current_graph = self.cpp_core.serialize_graph()
                     current_layer_index = 3
+                    self.affective_engine.apply_punishment(0.1)
                     continue
             else:
                 self.logger.info(f"Layer {current_layer_index} has medium confidence ({confidence}%). Initiating recursion.")
@@ -129,3 +135,16 @@ class Agent:
         self.logger.info("--- AUTONOMOUS TRAINING CYCLE INITIATED (BRIDGE MODE) ---")
         self.layers[5].create_training_data_for_layer1()
         self.logger.info("--- TRAINING CYCLE COMPLETED (BRIDGE MODE) ---")
+
+
+    def reward(self, value: float):
+        """Applies an external reward to the agent."""
+        self.affective_engine.apply_reward(value)
+
+    def punish(self, value: float):
+        """Applies an external punishment to the agent."""
+        self.affective_engine.apply_punishment(value)
+
+    def get_status(self) -> str:
+        """Returns the current internal status of the agent."""
+        return f"Internal Emotion: {self.affective_engine.get_state_as_text()}"

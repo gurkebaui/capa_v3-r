@@ -74,6 +74,29 @@ def main():
             elif command == "seed_emotion_test":
                 seed_emotion_test(memory_subsystem)
 
+
+            elif command == "reward":
+                try:
+                    value = float(args)
+                    agent.reward(value)
+                    print(f"Applied reward of {value}.")
+                except ValueError:
+                    print("Usage: reward <float_value>")
+            
+            elif command == "punish":
+                try:
+                    value = float(args)
+                    agent.punish(value)
+                    print(f"Applied punishment of {value}.")
+                except ValueError:
+                    print("Usage: punish <float_value>")
+
+            elif command == "status":
+                print(agent.get_status())
+
+
+                
+
             else:
                 print(f"Unknown command: '{command}'")
 

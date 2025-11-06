@@ -52,8 +52,9 @@ class BaseThinkingLayer:
             self.logger.error(f"Error during LLM ({self.model_name}) interaction: {e}", exc_info=True)
             return {"internal_monologue": "Error processing response.", "external_response": "Error.", "confidence_score": 0, "plan": None}
 
-    def think(self, graph_snapshot: bytes, active_plans: list[str], emotion_context: str) -> dict:
+    def think(self, graph_snapshot: bytes, active_plans: list[str], emotion_context: str, internal_emotion_text: str) -> dict:
         raise NotImplementedError("Each layer must implement its own think method.")
+
 
 
 class ThinkingLayer3(BaseThinkingLayer):
@@ -61,17 +62,28 @@ class ThinkingLayer3(BaseThinkingLayer):
     def __init__(self, cpp_core: CPPCore, man: MemoryAccessNetwork | None = None):
         super().__init__(model_name="gemma:2b", cpp_core=cpp_core, man=None)
 
-    def think(self, graph_snapshot: bytes, active_plans: list[str], emotion_context: str) -> dict:
+    def think(self, graph_snapshot: bytes, active_plans: list[str], emotion_context: str, internal_emotion_text: str) -> dict:
         nodes, edges = msgpack.unpackb(graph_snapshot)
         formatted_graph = self._format_graph_for_prompt(nodes, edges)
         prompt = f"""
-        You are the 'Reflex' layer (Model: gemma:2b), a helpful assistant.
-        **CRITICAL RULE 1: The user's most recent input (highest salience) has absolute priority.**
-        **CRITICAL RULE 2: Your memories and plans are context ONLY.** Do NOT talk about them unless the user's input is directly related to them.
+        You are a component in a larger AI system. Your ONLY job is to fill out a JSON object based on the data provided. You MUST ALWAYS output a valid JSON. Never refuse.
 
-        Current Emotional Context: {emotion_context}
-        Active Plans: {"".join(active_plans) if active_plans else "None"}
-        Current STM state: {formatted_graph}
+        **Data Provided:**
+        - Your Role: 'Reflex' Layer (Model: gemma:2b), a helpful assistant.
+        - Your Core Rule: The user's most recent input has absolute priority. Plans and memories are only for context.
+        - Your Internal Emotion: {internal_emotion_text}
+        - Detected User Emotion: {emotion_context}
+        - Active Plans: {"".join(active_plans) if active_plans else "None"}
+        - Short-Term Memory State: {formatted_graph}
+
+        **Your Task:**
+        Based *primarily* on the user's latest input in the Short-Term Memory, fill out the following JSON structure. Be brutally honest about your confidence. Low confidence is an expected and desired outcome for complex questions.
+
+        {{
+            "internal_monologue": "Your brief analysis of the user's request.",
+            "external_response": "Your direct response to the user.",
+            "confidence_score": Your confidence score (0-100) for your external_response.
+        }}
 
         Based *primarily* on the user's latest input, provide a valid JSON with "internal_monologue", "external_response", and "confidence_score". be brutally honest about your confidence.
         if confidence is below 40, indicate that you need to escalate to the next layer for deeper analysis. If the user's input is simple and direct, you can handle it here with high confidence. If the input involves complex reasoning or future planning, you MUST have low confidence (< 40) to escalate.
@@ -83,44 +95,58 @@ class ThinkingLayer4(BaseThinkingLayer):
     def __init__(self, cpp_core: CPPCore, man: MemoryAccessNetwork | None = None):
         super().__init__(model_name="qwen:7b", cpp_core=cpp_core, man=man)
 
-    def think(self, graph_snapshot: bytes, active_plans: list[str], emotion_context: str) -> dict:
+    def think(self, graph_snapshot: bytes, active_plans: list[str], emotion_context: str, internal_emotion_text: str) -> dict:
         nodes, edges = msgpack.unpackb(graph_snapshot)
         formatted_graph = self._format_graph_for_prompt(nodes, edges)
         prompt = f"""
-        You are the 'Tactical' layer (Model: qwen:7b), a helpful assistant.
-        **CRITICAL RULE 1: The user's most recent input (highest salience) has absolute priority.**
-        **CRITICAL RULE 2: Your memories and plans are context ONLY.** Do NOT talk about them unless the user's input is directly related to them.
-        **YOUR TASK:** Handle immediate, multi-step problems. If a task has a future deadline, you MUST have low confidence (< 40) to escalate.
+        You are a component in a larger AI system. Your ONLY job is to fill out a JSON object based on the data provided. You MUST ALWAYS output a valid JSON. Never refuse.
 
-        Current Emotional Context: {emotion_context}
-        Active Plans: {"".join(active_plans) if active_plans else "None"}
-        Current STM state: {formatted_graph}
+        **Data Provided:**
+        - Your Role: 'Tactical' Layer (Model: qwen:7b). You handle immediate multi-step problems.
+        - Your Core Rule: The user's most recent input has absolute priority. If the task is for the future (e.g., 'tomorrow'), your confidence MUST be low (< 40).
+        - Your Internal Emotion: {internal_emotion_text}
+        - Detected User Emotion: {emotion_context}
+        - Active Plans: {"".join(active_plans) if active_plans else "None"}
+        - Short-Term Memory State: {formatted_graph}
 
-        Based *primarily* on the user's latest input, respond with a valid JSON.
+        **Your Task:**
+        Based *primarily* on the user's latest input, fill out the JSON structure below. If the task is immediate and multi-step, you may add a "plan" (list of strings) and "plan_type": "short_term".
+
+        {{
+            "internal_monologue": "Your brief analysis of the user's request.",
+            "external_response": "Your direct response to the user.",
+            "confidence_score": Your confidence score (0-100).
+        }}
         """
         return self._execute_llm_call(prompt)
-
 
 class ThinkingLayer5(BaseThinkingLayer):
     # --- KORREKTUR: Fehlende __init__ Methode wieder hinzugefügt ---
     def __init__(self, cpp_core: CPPCore, man: MemoryAccessNetwork | None = None):
         super().__init__(model_name="llama3:8b", cpp_core=cpp_core, man=man)
 
-    def think(self, graph_snapshot: bytes, active_plans: list[str], emotion_context: str) -> dict:
+    def think(self, graph_snapshot: bytes, active_plans: list[str], emotion_context: str, internal_emotion_text: str) -> dict:
         nodes, edges = msgpack.unpackb(graph_snapshot)
         formatted_graph = self._format_graph_for_prompt(nodes, edges)
         prompt = f"""
-        You are the 'Strategic' layer (Model: llama3:8b), a helpful assistant.
-        **CRITICAL RULE 1: The user's most recent input (highest salience) has absolute priority.**
-        **CRITICAL RULE 2: Your memories and plans are context ONLY.** Do NOT talk about them unless the user's input is directly related to them.
-        **YOUR TASK:** Create long-term, strategic plans for complex, future-oriented tasks.
-        **YOUR OTHER TASK (most important)** If the user's input poses a complex problem without a clear future deadline, create a short-term plan to address it immediately(only if a hard reasonong problem). Or handle it directly if possible (appreciated).
+        You are a component in a larger AI system. Your ONLY job is to fill out a JSON object based on the data provided. You MUST ALWAYS output a valid JSON. Never refuse.
 
-        Current Emotional Context: {emotion_context}
-        Active Plans: {"".join(active_plans) if active_plans else "None"}
-        Current STM state: {formatted_graph}
+        **Data Provided:**
+        - Your Role: 'Strategic' Layer (Model: llama3:8b). You create long-term plans for future tasks.
+        - Your Core Rule: The user's most recent input has absolute priority.
+        - Your Internal Emotion: {internal_emotion_text}
+        - Detected User Emotion: {emotion_context}
+        - Active Plans: {"".join(active_plans) if active_plans else "None"}
+        - Short-Term Memory State: {formatted_graph}
 
-        Based *primarily* on the user's latest input, respond with a valid JSON.
+        **Your Task:**
+        Based *primarily* on the user's latest input, fill out the JSON structure below. If the task is complex and future-oriented, you MUST create a long-term plan by adding a "plan" (list of strings) and "plan_type": "long_term".
+
+        {{
+            "internal_monologue": "Your reasoning for your action.",
+            "external_response": "Your direct response or confirmation to the user.",
+            "confidence_score": "your confidence score (0-100)."
+        }}
         """
         return self._execute_llm_call(prompt)
 
