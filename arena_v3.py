@@ -76,21 +76,31 @@ def main():
                 seed_emotion_test(memory_subsystem)
 
 
-            elif command == "reward":
+            elif command == "manage_stm":
+                agent.manage_short_term_memory()
+                print("STM management cycle completed.")
+
+
+
+            elif command == "reward" or command == "punish":
+                if not args:
+                    print(f"Usage: {command} <float_value> [optional reason text]")
+                    continue
+                
+                arg_parts = args.split(maxsplit=1)
+                value_str = arg_parts[0]
+                reason = arg_parts[1] if len(arg_parts) > 1 else ""
+                
                 try:
-                    value = float(args)
-                    agent.reward(value)
-                    print(f"Applied reward of {value}.")
+                    value = float(value_str)
+                    if command == "reward":
+                        agent.reward(value, reason)
+                        print(f"Applied reward of {value} with reason: '{reason}'.")
+                    else: # punish
+                        agent.punish(value, reason)
+                        print(f"Applied punishment of {value} with reason: '{reason}'.")
                 except ValueError:
-                    print("Usage: reward <float_value>")
-            
-            elif command == "punish":
-                try:
-                    value = float(args)
-                    agent.punish(value)
-                    print(f"Applied punishment of {value}.")
-                except ValueError:
-                    print("Usage: punish <float_value>")
+                    print(f"Usage: {command} <float_value> [optional reason text]")
 
             elif command == "status":
                 print(agent.get_status())

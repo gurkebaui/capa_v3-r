@@ -1,12 +1,15 @@
 # agent.py (VOLLSTÄNDIG & FINAL KORRIGIERT)
 
+import json
 import logging
-from cognitive.layers import ThinkingLayer3, ThinkingLayer4, ThinkingLayer5
+import msgpack
+from cognitive.layers import  ThinkingLayer3, ThinkingLayer4, ThinkingLayer5
 from affective.engine import AffectiveEngine
 from processing.layer1 import ContextEnricher
 from memory.man import MemoryAccessNetwork
 from memory.subsystem import MemorySubsystem
 from affective.logger import ActionLogger
+from memory.stm_manager import STMManager 
 try:
     from capa_core import CPPCore
 except ImportError:
@@ -47,6 +50,7 @@ class Agent:
         self.memory_subsystem = memory_subsystem
         self.affective_engine = AffectiveEngine()
         self.action_logger = ActionLogger()
+        self.stm_manager = STMManager(memory_subsystem)
         self.layers = {
             3: ThinkingLayer3(cpp_core, man),
             4: ThinkingLayer4(cpp_core, man),
@@ -54,103 +58,242 @@ class Agent:
         }
         self.logger.info("Agent initialized successfully.")
 
-    def _run_cognitive_process(self, initial_graph_snapshot: bytes, emotion_context: str) -> dict:
-        current_graph = initial_graph_snapshot
-        current_layer_index = 3
-        recursion_counter = 0
-        max_recursions = 20
-        active_plans = self.man.find_active_plans()
-        internal_emotion_text = self.affective_engine.get_state_as_text()
 
-        while True:
-            active_layer = self.layers[current_layer_index]
-            self.logger.info(f"--- Passing control to Layer {current_layer_index} ({active_layer.model_name}) ---")
-            
-            # emotion_context wird nun an die think-Methode übergeben
-            result = active_layer.think(current_graph, active_plans, emotion_context, internal_emotion_text)
-
-            # Loggt Aktionen für feedback-Zuordnung (spionage)
-            self.action_logger.log_action(current_layer_index, active_layer.model_name, result)
-            
-            if result.get("plan") and result.get("plan_type"):
-                plan_type = result["plan_type"]
-                plan_steps = result["plan"]
-                self.logger.info(f"Layer {current_layer_index} created a {plan_type} plan.")
-                if plan_type == "long_term":
-                    plan_text = "Plan: " + " | ".join(plan_steps)
-                    self.memory_subsystem.add_experience(text=plan_text, metadata={"type": "future_plan", "status": "active"})
-                    self.logger.info("Long-term plan STORED in LTM.")
-                elif plan_type == "short_term":
-                    for step in plan_steps: self.cpp_core.add_node(f"PLAN_STEP: {step}")
-                    self.logger.info("Short-term plan noted in STM.")
-                return result
-
-            internal_monologue, external_response, confidence = _parse_and_validate_llm_response(result)
-
-            if confidence > 90:
-                self.logger.info(f"Layer {current_layer_index} has high confidence ({confidence}%). Finalizing.")
-                self.affective_engine.apply_reward(0.1)
-                return result
-            elif confidence < 40:
-                self.logger.warning(f"Layer {current_layer_index} has low confidence ({confidence}%).")
-                if current_layer_index < 5:
-                    self.logger.info(f"Escalating to Layer {current_layer_index + 1}.")
-                    self.cpp_core.add_node(f"L{current_layer_index}_THOUGHT: {internal_monologue}")
-                    current_graph = self.cpp_core.serialize_graph()
-                    current_layer_index += 1
-                    self.affective_engine.apply_punishment(0.1)
-                    continue
-                else:
-                    self.logger.error("Reached highest layer (5) with low confidence.")
-                    self.cpp_core.add_node(f"L{current_layer_index}_THOUGHT: {internal_monologue}")
-                    current_graph = self.cpp_core.serialize_graph()
-                    current_layer_index = 3
-                    self.affective_engine.apply_punishment(0.1)
-                    continue
-            else:
-                self.logger.info(f"Layer {current_layer_index} has medium confidence ({confidence}%). Initiating recursion.")
-                if recursion_counter >= max_recursions:
-                    self.logger.warning("Max recursion depth reached. Finalizing.")
-                    return result
-                recursion_counter += 1
-                self.logger.info(f"Recursion cycle {recursion_counter}/{max_recursions}.")
-                self.cpp_core.add_node(f"RECURSIVE_THOUGHT: {internal_monologue}")
-                current_graph = self.cpp_core.serialize_graph()
-                current_layer_index = 3
-                continue
-    
     def process_input(self, text: str) -> dict:
         self.logger.info(f"--- New Input Received: '{text}' ---")
         enriched_packet = self.context_enricher.process(text)
+        
+        # --- ZURÜCK ZUR ALTEN LOGIK: Alles wird erstmal ins STM geschrieben ---
         label = enriched_packet['original_input']
         emotion = enriched_packet['emotion_context']
         
-        if self.cpp_core.should_store_in_stm(label, {"emotion": emotion}):
-            self.logger.info("STM Gatekeeper approved storage.")
-            self.cpp_core.add_node(label, salience=1.0)
-            initial_graph = self.cpp_core.serialize_graph()
-            # Der Aufruf hier war bereits korrekt
-            return self._run_cognitive_process(initial_graph, emotion)
-        else:
-            self.logger.info("STM Gatekeeper denied storage.")
-            return {"external_response": "I have noted your input, but did not deem it necessary for deep thought."}
+        self.logger.info("Storing input in STM.")
+        self.cpp_core.add_node(label, salience=1.0)
+        initial_graph = self.cpp_core.serialize_graph()
+        
+        max_recursions = 3
+        return self._run_cognitive_process(initial_graph, emotion, max_recursions)
+    
+
+    def log_feedback_to_stm(self, feedback_type: str, value: float, reason: str):
+        """Logs a feedback event directly into the STM to be archived later."""
+        log_message = f"FEEDBACK: Received {feedback_type} of value {value}. Reason: '{reason}'"
+        self.logger.info(f"Logging to STM: {log_message}")
+        self.cpp_core.add_node(log_message, salience=0.8) # Feedback ist wichtig!
+
+
+    def _run_cognitive_process(self, initial_graph_snapshot: bytes, emotion_context: str, max_recursions: int) -> dict:
+        internal_emotion_text = self.affective_engine.get_state_as_text()
+        active_plans = self.man.find_active_plans()
+
+        # --- PHASE 1: REFLEX-SCHICHT (LAYER 3) ---
+        self.logger.info("--- Passing control to Layer 3 (Reflex) ---")
+        l3_result = self.layers[3].think(
+            graph_snapshot=initial_graph_snapshot, 
+            emotion_context=emotion_context, 
+            internal_emotion_text=internal_emotion_text
+        )
+        _, _, l3_confidence = _parse_and_validate_llm_response(l3_result)
+        
+        if l3_confidence > 90:
+            self.logger.info("Layer 3 has high confidence. Finalizing thought process.")
+            return l3_result
+        
+        self.logger.warning(f"Layer 3 has low/medium confidence ({l3_confidence}%). Escalating to L4/L5 reasoning duo.")
+
+        # --- PHASE 2: L4/L5 REASONING-SCHLEIFE ---
+        recursion_counter = 0
+        current_graph = initial_graph_snapshot # Starte mit dem sauberen Graphen
+        last_l5_result = l3_result # Fallback-Antwort
+
+        while recursion_counter < max_recursions:
+            recursion_info = f"Reasoning cycle {recursion_counter + 1} of {max_recursions}."
+            
+            # 1. LAYER 4 (PLANNER)
+            self.logger.info(f"--- Passing control to Layer 4 (Planner) | {recursion_info} ---")
+            l4_result = self.layers[4].think(
+                graph_snapshot=current_graph,
+                active_plans=active_plans,
+                emotion_context=emotion_context,
+                internal_emotion_text=internal_emotion_text,
+                recursion_info=recursion_info
+            )
+            l4_plan = l4_result.get("plan_for_layer5")
+
+            if not l4_plan:
+                self.logger.error("Layer 4 failed to produce a plan. Aborting reasoning loop.")
+                return last_l5_result
+
+            self.logger.info(f"Layer 4 produced a plan for Layer 5: {l4_plan}")
+
+            # 2. LAYER 5 (EXECUTOR)
+            # Füge den Plan und den L4-Monolog zum Graphen hinzu
+            self.cpp_core.add_node(f"L4_PLAN: {l4_plan}")
+            self.cpp_core.add_node(f"L4_THOUGHT: {l4_result.get('internal_monologue')}")
+            current_graph = self.cpp_core.serialize_graph()
+
+            self.logger.info(f"--- Passing control to Layer 5 (Executor) | {recursion_info} ---")
+            l5_result = self.layers[5].think(
+                graph_snapshot=current_graph,
+                active_plans=active_plans,
+                emotion_context=emotion_context,
+                internal_emotion_text=internal_emotion_text,
+                l4_plan=l4_plan,
+                recursion_info=recursion_info
+            )
+            last_l5_result = l5_result # Speichere das Ergebnis für den Fall, dass die Schleife abbricht
+            _, _, l5_confidence = _parse_and_validate_llm_response(l5_result)
+
+            if l5_confidence > 90:
+                self.logger.info("Layer 5 has high confidence. Finalizing reasoning loop.")
+                return l5_result
+            
+            self.logger.warning(f"Layer 5 has low/medium confidence ({l5_confidence}%). Looping back to Layer 4 for a new plan.")
+            self.cpp_core.add_node(f"L5_FAILED_ATTEMPT: {l5_result.get('internal_monologue')}")
+            current_graph = self.cpp_core.serialize_graph()
+            recursion_counter += 1
+        
+        self.logger.warning("Max recursion depth for L4/L5 loop reached. Returning best effort.")
+        return last_l5_result
+    
+    
         
     def initiate_training(self):
-        """Initiates the autonomous training cycle (Bridge Mode)."""
-        self.logger.info("--- AUTONOMOUS TRAINING CYCLE INITIATED (BRIDGE MODE) ---")
-        self.layers[5].create_training_data_for_layer1()
-        self.logger.info("--- TRAINING CYCLE COMPLETED (BRIDGE MODE) ---")
+        """Initiates the autonomous training cycle as per MAD Block 4."""
+        self.logger.info("--- AUTONOMOUS TRAINING DEACTIVATED FOR NOW ---")
+
+        """# 1. Initiierung (bereits geschehen)
+        self.logger.info("Step 1: Initiation complete.")
+
+        # 2. Selbst-Training von Layer 5 (Bridge Mode)
+        self.logger.info("Step 2: Layer 5 Self-Training (Bridge Mode)...")
+        # Hier würde L5 seine eigene Performance analysieren und ein neues Modell trainieren.
+        # Wir simulieren dies, indem wir annehmen, dass es erfolgreich war.
+        self.logger.info("...L5 Self-Training simulation complete.")
+        
+        # 3. Evaluation (Bridge Mode)
+        self.logger.info("Step 3: Evaluation by L5_old and L4 (Bridge Mode)...")
+        # Hier würden L5_old und L4 das neue L5_new-Modell testen.
+        evaluation_passed = True # Wir nehmen Erfolg an.
+        self.logger.info("...Evaluation simulation passed.")
+
+        # 4. Promotion (Bridge Mode)
+        if evaluation_passed:
+            self.logger.info("Step 4: Promoting new model to active (Bridge Mode).")
+        else:
+            self.logger.error("Step 4: Promotion failed. Aborting training cycle.")
+            return
+
+        # 5. Trainingskaskade (Echte Implementierung!)
+        self.logger.info("Step 5: Initiating Training Cascade (Teacher Mode)...")
+        self._run_training_cascade()
+        
+        # 6. Abschluss
+        self.logger.info("Step 6: Autonomous Training Cycle complete.") """
+
+    def _run_training_cascade(self):
+        self.logger.info("Training Cascade skipped for now (update needed)")
+        """Layer 5 acts as the 'Teacher' to improve other layers."""
+        """teacher_prompt = self.prompts.get('teacher', {}).get('system_prompt')
+        if not teacher_prompt:
+            self.logger.error("Teacher prompt not found in prompts.json. Aborting cascade.")
+            return
+
+        logs = self.action_logger.get_logs()
+        punished_actions = [
+            log for log in logs['action_history'] 
+            if any(f['feedback_for'] == log['action_id'] and f['feedback_type'] == 'punishment' for f in logs['feedback_log'])
+        ]
+
+        if not punished_actions:
+            self.logger.info("No punished actions found. No training needed.")
+            return
+
+        self.logger.info(f"Found {len(punished_actions)} punished actions to learn from.")
+        
+        # Den Lehrer (L5) bitten, neue Prompts zu generieren
+        teacher_task_prompt = f""" 
+        #{teacher_prompt}
+
+       # **Performance Data:**
+       # {json.dumps(logs, indent=2)}
+
+       # Based on this data, generate the improved prompts.
+        """
+        
+        try:
+            teacher_layer = self.layers[5]
+            self.logger.info("Requesting new prompts from the Teacher (L5)...")
+            
+            # Hier wird der Teacher-Prompt aus der JSON-Datei geladen
+            teacher_task_prompt = self.prompts.get('teacher', {}).get('system_prompt', '')
+            teacher_task_prompt += f"\n\n**Performance Data:**\n{json.dumps(logs, indent=2)}\n\nBased on this data, generate the improved prompts."
+
+            response = teacher_layer._execute_llm_call(teacher_task_prompt)
+            
+            if response and isinstance(response, dict):
+                updated = False
+                # --- KORREKTUR: Mache den Key-Vergleich case-insensitive ---
+                for layer_key_raw, new_prompt_text in response.items():
+                    layer_key = layer_key_raw.lower() # z.B. 'Layer3' -> 'layer3'
+                    if layer_key in self.prompts and 'system_prompt' in self.prompts[layer_key]:
+                        self.logger.info(f"Updating prompt for '{layer_key}'...")
+                        self.prompts[layer_key]['system_prompt'] = new_prompt_text
+                        updated = True
+                
+                if updated:
+                    with open('prompts.json', 'w', encoding='utf-8') as f:
+                        json.dump(self.prompts, f, indent=2, ensure_ascii=False)
+                    self.logger.info(f"Successfully updated 'prompts.json'. The agent will use these new instructions on the next run.")
+            else:
+                self.logger.error("Teacher (L5) did not return a valid prompt update dictionary.")
+
+        except Exception as e:
+            self.logger.error(f"An error occurred during the training cascade: {e}", exc_info=True)"""
+        
+
+    def manage_short_term_memory(self):
+        """
+        Initiates the summarization and archiving of the current STM content.
+        """
+        self.logger.info("--- STM Management Cycle Initiated (Summarize & Archive) ---")
+        graph_snapshot = self.cpp_core.serialize_graph()
+        nodes, _ = msgpack.unpackb(graph_snapshot)
+
+        if not nodes:
+            self.logger.info("STM is empty. Nothing to manage.")
+            return
+        
+        # Den aktuellen emotionalen Zustand als Kontext für die Zusammenfassung holen
+        final_emotion = self.affective_engine.get_state_as_text()
+        
+        # Den neuen Storyteller-Prozess aufrufen
+        self.stm_manager.summarize_and_archive(nodes, final_emotion)
+            
+        # Optional, aber wichtig für einen echten Agenten: STM leeren
+        # self.cpp_core.clear_graph()
+        self.logger.warning("STM clearing is not yet implemented. STM will grow until restart.")
+        self.logger.info("--- STM Management Cycle Complete ---")
+
+    def log_feedback_to_stm(self, feedback_type: str, value: float, reason: str):
+        log_message = f"FEEDBACK: Received {feedback_type} of value {value}. Reason: '{reason}'"
+        self.logger.info(f"Logging to STM: {log_message}")
+        # Wir geben dem Feedback eine hohe Salienz, damit der Manager es bemerkt
+        self.cpp_core.add_node(log_message, salience=0.9)
 
 
-    def reward(self, value: float):
-        """Applies an external reward to the agent."""
+    def reward(self, value: float, reason: str = ""):
+        """Applies an external reward and logs the feedback assignment with a reason."""
         self.affective_engine.apply_reward(value)
-        self.action_logger.assign_feedback(value, "reward")
+        self.action_logger.assign_feedback(value, "reward", reason)
+        self.log_feedback_to_stm("reward", value, reason)
 
-    def punish(self, value: float):
-        """Applies an external punishment to the agent."""
+    def punish(self, value: float, reason: str = ""):
+        """Applies an external punishment and logs the feedback assignment with a reason."""
         self.affective_engine.apply_punishment(value)
-        self.action_logger.assign_feedback(value, "punishment")
+        self.action_logger.assign_feedback(value, "punishment", reason)
+        self.log_feedback_to_stm("punishment", value, reason)
+
 
     def get_status(self) -> str:
         """Returns the current internal status of the agent."""

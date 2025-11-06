@@ -9,7 +9,7 @@ class ContextEnricher:
         self.man = man
         self.logger = logging.getLogger(self.__class__.__name__)
         self.client = ollama.Client()
-        self.model_name = "gemma:2b"
+        self.model_name = "granite4:3b"
         self.logger.info(f"Context Enricher (Layer 1) initialized with LLM: {self.model_name}.")
 
     def _extract_query_from_response(self, text: str) -> str:
@@ -29,20 +29,19 @@ class ContextEnricher:
     def _generate_emotional_query(self, input_text: str) -> str:
         """Uses an LLM to transform user input into an emotion-focused search query."""
         prompt = f"""
-        You are an emotion analysis AI. Your job is to transform a user's statement into a search query for finding similar past emotional experiences.
-        Focus on the underlying feeling (e.g., failure, success, confusion, curiosity).
+        Your job is to transform a user's statement into a search query for finding similar past experiences and emotions (your emotions).
         User statement: "{input_text}"
         Your output MUST be only the search query string, nothing else.
 
         Example 1:
         User statement: "I finally solved that difficult bug!"
         Output:
-        past experiences of success and overcoming challenges
+        past experiences of success and overcoming challenges (you are happy because the user is happy)
 
         Example 2:
         User statement: "I don't understand how this works."
         Output:
-        memories related to confusion or learning something new
+        memories related to confusion or learning something new (again you feel stressed because the user is stressed)
         """
         self.logger.info("Generating emotion-focused query with LLM...")
         try:
