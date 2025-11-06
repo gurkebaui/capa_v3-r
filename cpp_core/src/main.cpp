@@ -11,7 +11,9 @@ PYBIND11_MODULE(capa_core, m) {
 
     py::class_<ShortTermMemory>(m, "CPPCore")
         .def(py::init<>())
-        .def("add_node", &ShortTermMemory::add_node, py::arg("label"), "Adds a node to the graph and returns its ID.")
+        .def("add_node", &ShortTermMemory::add_node, 
+             py::arg("label"), py::arg("salience") = 1.0f, 
+             "Adds a node with a given salience.")
         .def("add_edge", &ShortTermMemory::add_edge, py::arg("from_id"), py::arg("to_id"), py::arg("weight"), "Adds a directed edge between two nodes.")
         .def("update_node_salience", &ShortTermMemory::update_node_salience, py::arg("id"), py::arg("salience"), "Updates the salience of a specific node.")
         .def("serialize_graph", [](ShortTermMemory &self) {

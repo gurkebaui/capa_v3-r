@@ -17,6 +17,18 @@ logging.basicConfig(
     format='%(asctime)s - [%(name)s] - %(levelname)s - %(message)s'
 )
 
+
+def seed_emotion_test(memory_system: MemorySubsystem):
+    """Adds a memory with strong negative emotion for testing."""
+    logger = logging.getLogger("TestSeeder")
+    logger.info("Seeding LTM with a negative emotional memory...")
+    memory_system.add_experience(
+        "My first attempt at building a complex algorithm resulted in a complete system crash and data loss.",
+        {"topic": "failure", "emotion": "negative"}
+    )
+    logger.info("Seeding complete.")
+
+
 def main():
     """
     The main entry point for the CAPA v3-R interactive arena.
@@ -24,24 +36,21 @@ def main():
     logger = logging.getLogger("Arena")
     logger.info("--- Initializing CAPA v3-R ---")
 
-    # --- 1. Kern-Komponenten initialisieren ---
     cpp_core = capa_core.CPPCore()
     memory_subsystem = MemorySubsystem()
     man = MemoryAccessNetwork(memory_subsystem)
     context_enricher = ContextEnricher(man)
-
-    # --- 2. Agenten instanziieren ---
-    # KORREKTUR HIER: Wir übergeben 'memory_subsystem' als viertes Argument
     agent = Agent(cpp_core, man, context_enricher, memory_subsystem)
     
     print("\n--- CAPA v3-R Arena ---")
-    print("Available commands: process_input <text>, exit")
+    print("Available commands: process_input <text>, initiate_training, seed_emotion_test, exit")
 
     while True:
         try:
             user_input = input("> ")
             if not user_input: continue
 
+            # --- KORREKTUR HIER: Korrekte Befehlsverarbeitung ---
             parts = user_input.split(maxsplit=1)
             command = parts[0].lower()
             args = parts[1] if len(parts) > 1 else ""
@@ -54,12 +63,16 @@ def main():
                 if not args:
                     print("Usage: process_input <text>")
                     continue
-                
                 final_result = agent.process_input(args)
-                
                 print("\n" + "="*20)
                 print(f"[FINAL AGENT RESPONSE]: {final_result.get('external_response', 'N/A')}")
                 print("="*20 + "\n")
+
+            elif command == "initiate_training":
+                agent.initiate_training()
+            
+            elif command == "seed_emotion_test":
+                seed_emotion_test(memory_subsystem)
 
             else:
                 print(f"Unknown command: '{command}'")

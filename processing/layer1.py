@@ -1,53 +1,89 @@
-# processing/layer1.py
+# processing/layer1.py (KOMPLETT ÜBERARBEITET)
 
 import logging
-from memory.man import MemoryAccessNetwork
+import ollama
+import re
 
 class ContextEnricher:
-    """
-    Layer 1: The intelligent pre-filter.
-    Its job is to take raw input and enrich it with relevant context from long-term memory.
-    """
-    def __init__(self, man: MemoryAccessNetwork):
+    def __init__(self, man):
         self.man = man
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.info("Context Enricher (Layer 1) initialized.")
+        self.client = ollama.Client()
+        self.model_name = "gemma:2b"
+        self.logger.info(f"Context Enricher (Layer 1) initialized with LLM: {self.model_name}.")
+
+    def _extract_query_from_response(self, text: str) -> str:
+        """Extracts the core search query from a potentially chatty LLM response."""
+        # Versucht, Text in ```-Blöcken zu finden
+        code_blocks = re.findall(r"```(.*?)```", text, re.DOTALL)
+        if code_blocks:
+            return code_blocks.strip()
+        
+        # Fallback: Nimmt die letzte nicht-leere Zeile
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if lines:
+            return lines[-1]
+        
+        return text # Absoluter Fallback
+
+    def _generate_emotional_query(self, input_text: str) -> str:
+        """Uses an LLM to transform user input into an emotion-focused search query."""
+        prompt = f"""
+        You are an emotion analysis AI. Your job is to transform a user's statement into a search query for finding similar past emotional experiences.
+        Focus on the underlying feeling (e.g., failure, success, confusion, curiosity).
+        User statement: "{input_text}"
+        Your output MUST be only the search query string, nothing else.
+
+        Example 1:
+        User statement: "I finally solved that difficult bug!"
+        Output:
+        past experiences of success and overcoming challenges
+
+        Example 2:
+        User statement: "I don't understand how this works."
+        Output:
+        memories related to confusion or learning something new
+        """
+        self.logger.info("Generating emotion-focused query with LLM...")
+        try:
+            response = self.client.chat(
+                model=self.model_name,
+                messages=[{'role': 'user', 'content': prompt}]
+            )
+            raw_response = response['message']['content']
+            # --- KORREKTUR HIER ---
+            query = self._extract_query_from_response(raw_response)
+            self.logger.info(f"Generated emotional query: '{query}'")
+            return query
+        except Exception as e:
+            self.logger.error(f"Failed to generate emotional query: {e}")
+            return input_text # Fallback auf den Originaltext
 
     def process(self, input_text: str) -> dict:
         """
-        Processes the raw input text to create an "enriched data packet".
-
-        Args:
-            input_text: The raw text from Layer 2.
-
-        Returns:
-            A dictionary containing the original input and retrieved context.
+        Processes raw text to create an "enriched data packet" with emotional context.
         """
         self.logger.info(f"Processing input: '{input_text}'")
 
-        # 1. Summarize (Bridge Mode)
-        # In the future, a small LLM would summarize the input.
-        # For now, we just use the original text.
-        summary = input_text
-        self.logger.info("Summarization (Bridge Mode): Using original text as summary.")
-
-        # 2. Contextualize by querying the MAN
-        self.logger.info("Querying MAN for relevant context...")
-        context_result = self.man.request(summary, search_type='quick')
+        # 1. Intelligente Query an das MAN formulieren
+        emotional_query = self._generate_emotional_query(input_text)
         
-        # Extract the most relevant memory, if any
-        found_memory = ""
-        if context_result and context_result.get('documents') and context_result['documents'][0]:
-            found_memory = context_result['documents'][0][0]
-            self.logger.info(f"MAN returned context: '{found_memory}'")
-        else:
-            self.logger.warning("MAN returned no relevant context.")
+        # 2. LTM nach emotional relevanten Erinnerungen durchsuchen
+        self.logger.info(f"Querying MAN with emotional query: '{emotional_query}'")
+        context_result = self.man.request(emotional_query, search_type='quick')
+        
+        # 3. "Gefühlsvektor" extrahieren (simuliert)
+        emotion_context = "neutral" # Default
+        if context_result and context_result.get('metadatas') and context_result['metadatas'][0]:
+            metadata = context_result['metadatas'][0][0]
+            if "emotion" in metadata:
+                emotion_context = metadata["emotion"]
+                self.logger.info(f"Extracted emotional context from memory: '{emotion_context}'")
 
-        # 3. Create the enriched data packet
+        # 4. Angereichertes Datenpaket erstellen
         enriched_packet = {
             "original_input": input_text,
-            "context_memory": found_memory
+            "emotion_context": emotion_context
         }
         self.logger.info(f"Created enriched data packet: {enriched_packet}")
-
         return enriched_packet

@@ -50,18 +50,19 @@ class Agent:
         }
         self.logger.info("Agent initialized successfully.")
 
-    def _run_cognitive_process(self, initial_graph_snapshot: bytes) -> dict:
+    def _run_cognitive_process(self, initial_graph_snapshot: bytes, emotion_context: str) -> dict:
         current_graph = initial_graph_snapshot
         current_layer_index = 3
         recursion_counter = 0
-        max_recursions = 20 # Zurück auf 2 gesetzt, da die Logik nun robuster ist
+        max_recursions = 20
         active_plans = self.man.find_active_plans()
 
         while True:
             active_layer = self.layers[current_layer_index]
             self.logger.info(f"--- Passing control to Layer {current_layer_index} ({active_layer.model_name}) ---")
             
-            result = active_layer.think(current_graph, active_plans)
+            # emotion_context wird nun an die think-Methode übergeben
+            result = active_layer.think(current_graph, active_plans, emotion_context)
             
             if result.get("plan") and result.get("plan_type"):
                 plan_type = result["plan_type"]
@@ -91,8 +92,10 @@ class Agent:
                     continue
                 else:
                     self.logger.error("Reached highest layer (5) with low confidence.")
-                    result['external_response'] = "I have considered the problem with all my cognitive abilities but could not reach a confident conclusion."
-                    return result
+                    self.cpp_core.add_node(f"L{current_layer_index}_THOUGHT: {internal_monologue}")
+                    current_graph = self.cpp_core.serialize_graph()
+                    current_layer_index = 3
+                    continue
             else:
                 self.logger.info(f"Layer {current_layer_index} has medium confidence ({confidence}%). Initiating recursion.")
                 if recursion_counter >= max_recursions:
@@ -109,16 +112,20 @@ class Agent:
         self.logger.info(f"--- New Input Received: '{text}' ---")
         enriched_packet = self.context_enricher.process(text)
         label = enriched_packet['original_input']
-        metadata = {"context": enriched_packet['context_memory']}
+        emotion = enriched_packet['emotion_context']
         
-        if self.cpp_core.should_store_in_stm(label, metadata):
+        if self.cpp_core.should_store_in_stm(label, {"emotion": emotion}):
             self.logger.info("STM Gatekeeper approved storage.")
-            id1 = self.cpp_core.add_node(label)
-            if enriched_packet['context_memory']:
-                id2 = self.cpp_core.add_node(enriched_packet['context_memory'])
-                self.cpp_core.add_edge(id1, id2, 0.8)
+            self.cpp_core.add_node(label, salience=1.0)
             initial_graph = self.cpp_core.serialize_graph()
-            return self._run_cognitive_process(initial_graph)
+            # Der Aufruf hier war bereits korrekt
+            return self._run_cognitive_process(initial_graph, emotion)
         else:
             self.logger.info("STM Gatekeeper denied storage.")
             return {"external_response": "I have noted your input, but did not deem it necessary for deep thought."}
+        
+    def initiate_training(self):
+        """Initiates the autonomous training cycle (Bridge Mode)."""
+        self.logger.info("--- AUTONOMOUS TRAINING CYCLE INITIATED (BRIDGE MODE) ---")
+        self.layers[5].create_training_data_for_layer1()
+        self.logger.info("--- TRAINING CYCLE COMPLETED (BRIDGE MODE) ---")

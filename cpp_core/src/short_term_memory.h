@@ -31,7 +31,7 @@ struct Edge {
 class ShortTermMemory {
 public:
     ShortTermMemory();
-    int add_node(const std::string& label);
+    int add_node(const std::string& label, float salience = 1.0f);
     void add_edge(int from_id, int to_id, float weight);
     void update_node_salience(int id, float salience);
     

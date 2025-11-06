@@ -7,9 +7,9 @@
 
 ShortTermMemory::ShortTermMemory() : next_node_id(0) {}
 
-int ShortTermMemory::add_node(const std::string& label) {
+int ShortTermMemory::add_node(const std::string& label, float salience) {
     int id = next_node_id++;
-    nodes[id] = {id, label, 1.0f};
+    nodes[id] = {id, label, salience}; // Verwende den übergebenen Salienz-Wert
     return id;
 }
 
