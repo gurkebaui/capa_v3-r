@@ -42,6 +42,9 @@ public:
     void log_to_ltm(const std::string& journal_path, const std::string& json_data);
     bool should_store_in_stm(const std::string& label, const pybind11::dict& metadata);
 
+    // Löscht den gesamten Graphen
+    void clear_graph();
+
 private:
     std::unordered_map<int, Node> nodes;
     std::vector<Edge> edges;

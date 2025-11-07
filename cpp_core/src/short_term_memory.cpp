@@ -46,6 +46,12 @@ void ShortTermMemory::add_edge(int from_id, int to_id, float weight) {
     edges.push_back({from_id, to_id, weight});
 }
 
+void ShortTermMemory::clear_graph() {
+    nodes.clear();
+    edges.clear();
+    next_node_id = 0;
+}
+
 void ShortTermMemory::update_node_salience(int id, float salience) {
     if (nodes.find(id) == nodes.end()) {
         throw std::runtime_error("Node ID not found.");

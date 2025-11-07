@@ -31,6 +31,20 @@ class ActionLogger:
         self.action_history.append(record)
         self.logger.info(f"Logged action {action_id} from Layer {layer_index}.")
         return action_id
+    
+
+    def get_action_by_id(self, action_id: str) -> dict | None:
+        """Finds and returns a specific action record from the history."""
+        for action in self.action_history:
+            if action["action_id"] == action_id:
+                return action
+        return None
+    
+    def clear_logs(self):
+        """Clears all action and feedback history after a learning cycle."""
+        self.action_history.clear()
+        self.feedback_log.clear()
+        self.logger.info("Action and feedback logs have been cleared for the next session.")
 
     def assign_feedback(self, value: float, feedback_type: str, reason: str = ""):
         """

@@ -254,9 +254,12 @@ class Agent:
 
     def manage_short_term_memory(self):
         """
-        Initiates the summarization and archiving of the current STM content.
+        Initiates the consolidation of the entire STM session:
+        1. Summarizes feedback-driven events into 'Learned Lessons'.
+        2. Archives them to LTM.
+        3. Clears STM and ActionLogger for the next session.
         """
-        self.logger.info("--- STM Management Cycle Initiated (Summarize & Archive) ---")
+        self.logger.info("--- STM Management Cycle Initiated (Consolidate & Learn) ---")
         graph_snapshot = self.cpp_core.serialize_graph()
         nodes, _ = msgpack.unpackb(graph_snapshot)
 
@@ -264,23 +267,27 @@ class Agent:
             self.logger.info("STM is empty. Nothing to manage.")
             return
         
-        # Den aktuellen emotionalen Zustand als Kontext für die Zusammenfassung holen
+        # 1. Den Manager die Lektionen aus der Session erstellen lassen
         final_emotion = self.affective_engine.get_state_as_text()
-        
-        # Den neuen Storyteller-Prozess aufrufen
-        self.stm_manager.summarize_and_archive(nodes, final_emotion)
+        self.stm_manager.consolidate_and_learn(nodes, final_emotion)
             
-        # Optional, aber wichtig für einen echten Agenten: STM leeren
-        # self.cpp_core.clear_graph()
-        self.logger.warning("STM clearing is not yet implemented. STM will grow until restart.")
+        # 2. STM leeren
+        self.logger.info("Consolidation complete. Clearing STM for the next session.")
+        self.cpp_core.clear_graph()
+
+        # 3. ActionLogger leeren
+        self.action_logger.clear_logs()
+
+        self.affective_engine.reset()
+        
         self.logger.info("--- STM Management Cycle Complete ---")
 
+    # --- `reward` und `punish` werden wieder vereinfacht ---
+    # Ihre einzige Aufgabe ist es, das Feedback ins STM zu schreiben.
     def log_feedback_to_stm(self, feedback_type: str, value: float, reason: str):
         log_message = f"FEEDBACK: Received {feedback_type} of value {value}. Reason: '{reason}'"
-        self.logger.info(f"Logging to STM: {log_message}")
-        # Wir geben dem Feedback eine hohe Salienz, damit der Manager es bemerkt
+        self.logger.info(f"Logging feedback to STM: {log_message}")
         self.cpp_core.add_node(log_message, salience=0.9)
-
 
     def reward(self, value: float, reason: str = ""):
         """Applies an external reward and logs the feedback assignment with a reason."""

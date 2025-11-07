@@ -6,66 +6,96 @@ import json
 
 class STMManager:
     """
-    The intelligent storyteller for the STM. It analyzes the STM graph, identifies
-    significant events (input -> output -> feedback), and summarizes them into
-    'learned lessons' for the Long-Term Memory.
+    The intelligent "Memory Consolidator". It analyzes the entire content of the STM
+    at the end of a session, identifies distinct learning events (ending with feedback),
+    summarizes each into a 'Learned Lesson', and archives them to LTM.
     """
     def __init__(self, memory_subsystem):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.client = ollama.Client()
         self.model_name = "granite4:3b"
         self.memory_subsystem = memory_subsystem
-        self.system_prompt = """
-        You are an AI Analyst summarizing a cognitive cycle. You will receive a snapshot of memories. Your task is to identify the core event and summarize it into a single, concise 'Learned Lesson'.
-        The format MUST be: "INPUT: [user's core request] | OUTPUT: [agent's final response] | RESULT: [summary of feedback, e.g., 'Positive feedback', 'Negative feedback: was nonsensical', or 'Neutral'] | EMOTION: [internal emotion after feedback, e.g., 'very positive', 'negative']"
+        
+        # --- KORREKTUR: Die Prompt-Variablen werden hier korrekt definiert ---
+        self.lesson_prompt = """
+        You are an AI Analyst summarizing an AI's cognitive session into a series of 'Learned Lessons'.
+        You will receive a list of raw memories from the Short-Term Memory.
+        A 'learning cycle' is a sequence of memories that ends with a 'FEEDBACK' node.
+        
+        Your task is to:
+        1. Identify each complete learning cycle in the list.
+        2. For EACH cycle, create a single, concise 'Learned Lesson' string.
+        3. Ignore all memories that are not part of a completed feedback cycle.
+        
+        The format for each lesson MUST be:
+        "INPUT: [The user's core request that started the cycle] | OUTPUT: [The agent's final response that was judged] | RESULT: [A summary of the feedback] | EMOTION: [The agent's internal emotion during the summary]"
 
-        - Focus on the most important nodes: the user's direct input, the agent's final external response, and any FEEDBACK nodes.
-        - Ignore intermediate thoughts ('L_THOUGHT', 'RECURSIVE_THOUGHT').
-        - If there is no feedback, the RESULT is 'Neutral'.
-
-        Example Input:
-        - "Node(0, 'was ist 2+2', salience=1.0)"
-        - "Node(1, 'RECURSIVE_THOUGHT: I should calculate this.', salience=0.8)"
-        - "Node(2, 'The answer is 4.', salience=1.0)"
-        - "Node(3, 'FEEDBACK: Received reward of value 1.0. Reason: 'correct answer'', salience=0.8)"
-
-        Example Output:
-        "INPUT: was ist 2+2 | OUTPUT: The answer is 4. | RESULT: Positive feedback: 'correct answer' | EMOTION: positive"
+        You MUST respond with a valid JSON object containing a single key "learned_lessons", which is a list of the lesson strings you generated.
         """
-        self.logger.info(f"STM Manager (Storyteller) initialized with LLM: {self.model_name}.")
+        self.day_summary_prompt = """
+        You are an AI Psychologist analyzing a list of 'Learned Lessons' from an AI's session.
+        Your task is to synthesize these individual experiences into a single, overarching 'Lesson of the Day'.
+        This meta-lesson should capture the most important learning or pattern from the session.
+        Your output must be a single string.
+        """
+        self.logger.info(f"STM Manager (Consolidator) initialized with LLM: {self.model_name}.")
 
-    def summarize_and_archive(self, stm_nodes: list, final_emotion_text: str):
+    def consolidate_and_learn(self, stm_nodes: list, final_emotion_text: str):
         """
-        Summarizes the key event from the STM nodes into a 'learned lesson' and archives it.
+        Analyzes all STM nodes, generates a list of learned lessons, and archives them.
         """
-        if not stm_nodes:
-            self.logger.info("STM is empty. Nothing to summarize.")
+        if not any("FEEDBACK:" in node[1] for node in stm_nodes):
+            self.logger.info("No feedback nodes found in STM. No new lessons to learn.")
             return
 
-        # Formatiere die Knoten für den Prompt
         formatted_nodes = "\n- ".join([f"Node({n[0]}, '{n[1]}', salience={n[2]})" for n in stm_nodes])
-        prompt_input = f"STM Snapshot:\n- {formatted_nodes}\n\nFinal Internal Emotion State: '{final_emotion_text}'"
+        prompt_input = f"STM Snapshot:\n- {formatted_nodes}\n\nAgent's final Internal Emotion State for this session: '{final_emotion_text}'"
 
-        self.logger.info(f"STM Manager summarizing {len(stm_nodes)} nodes into a lesson...")
+        self.logger.info(f"STM Manager consolidating {len(stm_nodes)} nodes into lessons...")
         try:
+            # --- KORREKTUR: Die korrekte Prompt-Variable wird hier verwendet ---
             response = self.client.chat(
                 model=self.model_name,
                 messages=[
-                    {'role': 'system', 'content': self.system_prompt},
+                    {'role': 'system', 'content': self.lesson_prompt},
                     {'role': 'user', 'content': prompt_input}
                 ],
+                format='json'
             )
-            # Wir nehmen die Antwort direkt, da sie bereits das korrekte Format haben sollte
-            learned_lesson = response['message']['content'].strip()
+            data = json.loads(response['message']['content'])
+            learned_lessons = data.get("learned_lessons", [])
             
-            self.logger.info(f"Generated Learned Lesson: '{learned_lesson}'")
+            if not learned_lessons:
+                self.logger.warning("Consolidator did not generate any lessons from the STM content.")
+                return
+
+            self.logger.info(f"Generated {len(learned_lessons)} new individual Learned Lesson(s).")
             
-            # Die zusammengefasste Lektion ins LTM speichern
-            self.memory_subsystem.add_experience(
-                text=learned_lesson,
-                metadata={"source": "learned_lesson"}
-            )
-            self.logger.info("Successfully archived the learned lesson to LTM.")
+            for lesson in learned_lessons:
+                self.memory_subsystem.add_experience(
+                    text=lesson,
+                    metadata={"source": "learned_lesson"}
+                )
+            self.logger.info("Successfully archived all individual lessons to LTM.")
+
+            if len(learned_lessons) > 1:
+                self.logger.info("Synthesizing the 'Lesson of the Day'...")
+                day_summary_input = "\n- ".join(learned_lessons)
+                summary_response = self.client.chat(
+                    model=self.model_name,
+                    messages=[
+                        {'role': 'system', 'content': self.day_summary_prompt},
+                        {'role': 'user', 'content': f"Here are the lessons from the session:\n- {day_summary_input}"}
+                    ]
+                )
+                lesson_of_the_day = summary_response['message']['content'].strip()
+                self.logger.info(f"Generated Lesson of the Day: '{lesson_of_the_day}'")
+                
+                self.memory_subsystem.add_experience(
+                    text=lesson_of_the_day,
+                    metadata={"source": "lesson_of_the_day"}
+                )
+                self.logger.info("Successfully archived the Lesson of the Day to LTM.")
 
         except Exception as e:
-            self.logger.error(f"STM Manager failed to create a learned lesson: {e}.")
+            self.logger.error(f"STM Manager failed during consolidation: {e}", exc_info=True)

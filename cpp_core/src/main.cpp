@@ -24,5 +24,6 @@ PYBIND11_MODULE(capa_core, m) {
         .def("log_to_ltm", &ShortTermMemory::log_to_ltm, py::arg("journal_path"), py::arg("data"), "Appends a JSON string to the specified journal file for asynchronous processing.")
         .def("should_store_in_stm", &ShortTermMemory::should_store_in_stm, 
              py::arg("label"), py::arg("metadata"),
-             "Checks if a node should be stored in STM based on a simple keyword filter.");
+             "Checks if a node should be stored in STM based on a simple keyword filter.")
+             .def("clear_graph", &ShortTermMemory::clear_graph, "Clears all nodes and edges from the STM.");
 }

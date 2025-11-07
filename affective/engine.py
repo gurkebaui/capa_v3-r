@@ -30,6 +30,12 @@ class AffectiveEngine:
         self.state = [valence, arousal]
         self.logger.warning(f"PUNISHMENT applied. New state: {self.state}")
 
+
+    def reset(self):
+        """Resets the emotional state to neutral, simulating rest/sleep."""
+        self.state = [0.0, 0.0]
+        self.logger.info(f"Emotional state has been reset to neutral.")
+
     def get_state_as_text(self) -> str:
         """Translates the [valence, arousal] vector into a human-readable string for the LLM."""
         valence, arousal = self.state
