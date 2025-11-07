@@ -35,7 +35,7 @@ Das Herzstück ist ein hybrides C++/Python-System, das einen hochperformanten C+
 
 1.  **Repository klonen:**
     ```bash
-    git clone <repository_url>
+    git clone https://github.com/gurkebaui/capa_v3-r.git
     cd capa_v3_r
     ```
 
