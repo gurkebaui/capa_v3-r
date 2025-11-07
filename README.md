@@ -1,6 +1,4 @@
-Ja, absolut. Ein gutes Projekt braucht ein klares und prägnantes README. Hier ist eine Zusammenfassung, die die Essenz von CAPA v3-R einfängt und die notwendigen Installationsschritte beschreibt.
 
----
 
 # CAPA v3-R - "Der Denker"
 
