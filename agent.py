@@ -62,27 +62,23 @@ class Agent:
     def process_input(self, text: str) -> dict:
         self.logger.info(f"--- New Input Received: '{text}' ---")
         enriched_packet = self.context_enricher.process(text)
-        
-        # --- ZURÜCK ZUR ALTEN LOGIK: Alles wird erstmal ins STM geschrieben ---
         label = enriched_packet['original_input']
         emotion = enriched_packet['emotion_context']
         
-        self.logger.info("Storing input in STM.")
+        # In diesem Design wird der Input *immer* als wichtig angesehen und gespeichert,
+        # da Layer 3 die erste Filterung übernimmt.
+        # Der should_store_in_stm-Aufruf ist hier nicht mehr nötig.
+        
+        self.logger.info("Storing input in STM to initiate cognitive cycle.")
         self.cpp_core.add_node(label, salience=1.0)
         initial_graph = self.cpp_core.serialize_graph()
         
-        max_recursions = 3
-        return self._run_cognitive_process(initial_graph, emotion, max_recursions)
+        # Starte den kognitiven Prozess und gib sein Ergebnis zurück
+        return self._run_cognitive_process(initial_graph, emotion, text)
+
     
 
-    def log_feedback_to_stm(self, feedback_type: str, value: float, reason: str):
-        """Logs a feedback event directly into the STM to be archived later."""
-        log_message = f"FEEDBACK: Received {feedback_type} of value {value}. Reason: '{reason}'"
-        self.logger.info(f"Logging to STM: {log_message}")
-        self.cpp_core.add_node(log_message, salience=0.8) # Feedback ist wichtig!
-
-
-    def _run_cognitive_process(self, initial_graph_snapshot: bytes, emotion_context: str, max_recursions: int) -> dict:
+    def _run_cognitive_process(self, initial_graph_snapshot: bytes, emotion_context: str, input_text: str) -> dict:
         internal_emotion_text = self.affective_engine.get_state_as_text()
         active_plans = self.man.find_active_plans()
 
@@ -91,7 +87,8 @@ class Agent:
         l3_result = self.layers[3].think(
             graph_snapshot=initial_graph_snapshot, 
             emotion_context=emotion_context, 
-            internal_emotion_text=internal_emotion_text
+            internal_emotion_text=internal_emotion_text,
+            input_text=input_text
         )
         _, _, l3_confidence = _parse_and_validate_llm_response(l3_result)
         
@@ -102,8 +99,10 @@ class Agent:
         self.logger.warning(f"Layer 3 has low/medium confidence ({l3_confidence}%). Escalating to L4/L5 reasoning duo.")
 
         # --- PHASE 2: L4/L5 REASONING-SCHLEIFE ---
+        # Placeholder: Layer 1 wird in Zukunft die Rekursionstiefe bestimmen
+        max_recursions = 3
         recursion_counter = 0
-        current_graph = initial_graph_snapshot # Starte mit dem sauberen Graphen
+        current_graph = initial_graph_snapshot
         last_l5_result = l3_result # Fallback-Antwort
 
         while recursion_counter < max_recursions:
@@ -116,7 +115,9 @@ class Agent:
                 active_plans=active_plans,
                 emotion_context=emotion_context,
                 internal_emotion_text=internal_emotion_text,
-                recursion_info=recursion_info
+                recursion_info=recursion_info,
+                recursion_counter=recursion_counter,
+                input_text=input_text
             )
             l4_plan = l4_result.get("plan_for_layer5")
 
@@ -127,7 +128,6 @@ class Agent:
             self.logger.info(f"Layer 4 produced a plan for Layer 5: {l4_plan}")
 
             # 2. LAYER 5 (EXECUTOR)
-            # Füge den Plan und den L4-Monolog zum Graphen hinzu
             self.cpp_core.add_node(f"L4_PLAN: {l4_plan}")
             self.cpp_core.add_node(f"L4_THOUGHT: {l4_result.get('internal_monologue')}")
             current_graph = self.cpp_core.serialize_graph()
@@ -139,9 +139,11 @@ class Agent:
                 emotion_context=emotion_context,
                 internal_emotion_text=internal_emotion_text,
                 l4_plan=l4_plan,
-                recursion_info=recursion_info
+                recursion_info=recursion_info,
+                recursion_counter=recursion_counter,
+                input_text=input_text
             )
-            last_l5_result = l5_result # Speichere das Ergebnis für den Fall, dass die Schleife abbricht
+            last_l5_result = l5_result
             _, _, l5_confidence = _parse_and_validate_llm_response(l5_result)
 
             if l5_confidence > 90:

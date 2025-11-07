@@ -70,19 +70,21 @@ class ThinkingLayer3(BaseThinkingLayer):
         If the question is complex, a riddle, or requires multiple steps, you MUST have a low confidence score (e.g., 30) to escalate it. Do not attempt to solve it. Your job is speed and efficiency.
         """
 
-    def think(self, graph_snapshot: bytes, emotion_context: str, internal_emotion_text: str) -> dict:
+    def think(self, graph_snapshot: bytes, emotion_context: str, internal_emotion_text: str, input_text: str) -> dict:
         nodes, edges = msgpack.unpackb(graph_snapshot)
         formatted_graph = self._format_graph_for_prompt(nodes, edges)
         dynamic_content = f"""
         **Data Provided:**
         - Your Emotion: {internal_emotion_text} (behave accordingly, this is your current sate)
+        - How the input makes you feel: {emotion_context}
         - Short-Term Memory State: {formatted_graph}
+        -User's most recent input: {input_text}
 
         **Your Task:**
         Fill out the following JSON structure. Be brutally honest about your confidence level. Only awnser simple tasks directly. If there is a riddle or complex dialog or task, do NOT answer directly but reason it out in your internal monologue and lower your confidence below 40%.   
         {{
             "internal_monologue": "Your reasoning."(optional),
-            "external_response": "Your direct response." (only if confident),
+            "external_response": "Your direct response.(do not forget your emotion)" (only if confident),
             "confidence_score": Your confidence score (0-100) .
         }}
         """
@@ -98,21 +100,25 @@ class ThinkingLayer4(BaseThinkingLayer):
         Analyze the user's request and the STM state. Create a clear, step-by-step plan that the final strategic layer should follow to solve the problem.
         """
     
-    def think(self, graph_snapshot: bytes,  active_plans: list[str], emotion_context: str, internal_emotion_text: str, recursion_info: str) -> dict:
+    def think(self, graph_snapshot: bytes,  active_plans: list[str], emotion_context: str, internal_emotion_text: str, recursion_info: str, recursion_counter: int, input_text: str) -> dict:
         nodes, edges = msgpack.unpackb(graph_snapshot)
         formatted_graph = self._format_graph_for_prompt(nodes, edges)
+        user_input_display = f"- User's most recent input: {input_text}" if recursion_counter < 2 else ""
+
         dynamic_content = f"""
         **Data Provided:**
-        - Your Internal Emotion: {internal_emotion_text} (behave accordingly, this is your current sate, do not hide it, it is part of you)
-        - Short-Term Memory State: {formatted_graph}
-        - Active Plans: {"".join(active_plans) if active_plans else "None"}
+        - Your Internal Emotion: {internal_emotion_text}
+        - How the input makes you feel: {emotion_context}
+        - Active Plans: None
         - Reasoning Status: {recursion_info}
+        {user_input_display}
+        - Short-Term Memory State (for context): {formatted_graph}
 
         **Your Task:**
         Create a reasoning plan for Layer 5 to follow.
         {{
             "internal_monologue": "My analysis of the user's request and why this plan is necessary. The previous attempt failed because...",
-            "plan_for_layer5": ["Step 1: Define the core concepts.", "Step 2: Compare A and B.", "Step 3: Formulate a final conclusion."]
+            "plan_for_layer5": ["Step 1: ...", "Step 2: ...", "Step 3: ..., and so on"]
         }}
         """
         return self._execute_llm_call(dynamic_content)
@@ -126,22 +132,24 @@ class ThinkingLayer5(BaseThinkingLayer):
         **CRITICAL RULE: The user's most recent input has absolute priority.**
         """
 
-    def think(self, graph_snapshot: bytes , active_plans: list[str], emotion_context: str, internal_emotion_text: str, l4_plan: list[str], recursion_info: str) -> dict:
+    def think(self, graph_snapshot: bytes , active_plans: list[str], emotion_context: str, internal_emotion_text: str, l4_plan: list[str], recursion_info: str, recursion_counter: int, input_text: str) -> dict:
         nodes, edges = msgpack.unpackb(graph_snapshot)
         formatted_graph = self._format_graph_for_prompt(nodes, edges)
         dynamic_content = f"""
         **Data Provided:**
         - Your Internal Emotion: {internal_emotion_text} (behave accordingly, this is your current sate, do not hide it, it is part of you)
+        - How the input makes you feel: {emotion_context}
         - **Reasoning plan from Layer 4:** {l4_plan}
         - Short-Term Memory State: {formatted_graph}
         - Active Plans: {"".join(active_plans) if active_plans else "None"}
         - Reasoning Status: {recursion_info}
+        { "-Users's most recent input:" .join(input_text) if recursion_counter < 2  else ""}
 
         **Your Task:**
         Execute the provided reasoning plan in your internal monologue to formulate the final answer. If you are still not confident, give a low confidence score to get a new plan from Layer 4.
         {{
             "internal_monologue": "Executing plan: Step 1...",
-            "external_response": "The final, comprehensive answer for the user.",
+            "external_response": "The final, comprehensive answer for the user.(do not forget your emotion)",
             "confidence_score": "Your confidence score for this answer (0-100)."
         }}
         """
