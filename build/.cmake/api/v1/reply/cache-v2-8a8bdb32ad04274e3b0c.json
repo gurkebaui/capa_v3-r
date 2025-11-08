@@ -139,10 +139,10 @@
 				},
 				{
 					"name" : "HELPSTRING",
-					"value" : "CXX compiler"
+					"value" : "No help, variable specified on the command line."
 				}
 			],
-			"type" : "STRING",
+			"type" : "FILEPATH",
 			"value" : "C:/TDM-GCC-64/bin/g++.exe"
 		},
 		{
@@ -283,10 +283,10 @@
 				},
 				{
 					"name" : "HELPSTRING",
-					"value" : "C compiler"
+					"value" : "No help, variable specified on the command line."
 				}
 			],
-			"type" : "STRING",
+			"type" : "FILEPATH",
 			"value" : "C:/TDM-GCC-64/bin/gcc.exe"
 		},
 		{
@@ -1979,7 +1979,7 @@
 			[
 				{
 					"name" : "HELPSTRING",
-					"value" : "Path to a program."
+					"value" : ""
 				}
 			],
 			"type" : "INTERNAL",
@@ -2003,7 +2003,7 @@
 			[
 				{
 					"name" : "HELPSTRING",
-					"value" : "Path to a file."
+					"value" : ""
 				}
 			],
 			"type" : "INTERNAL",
@@ -2034,6 +2034,18 @@
 			"value" : "e8d259af94663ccd9b1220f8c7fb3932"
 		},
 		{
+			"name" : "_Python_Interpreter_REASON_FAILURE",
+			"properties" : 
+			[
+				{
+					"name" : "HELPSTRING",
+					"value" : "Interpreter reason failure"
+				}
+			],
+			"type" : "INTERNAL",
+			"value" : ""
+		},
+		{
 			"name" : "_Python_LIBRARY_DEBUG",
 			"properties" : 
 			[
@@ -2051,7 +2063,7 @@
 			[
 				{
 					"name" : "HELPSTRING",
-					"value" : "Path to a library."
+					"value" : ""
 				}
 			],
 			"type" : "INTERNAL",

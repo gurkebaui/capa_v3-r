@@ -1,10 +1,4 @@
 # ninja log v5
-6	3966	7840423929427893	CMakeFiles/capa_core.dir/src/short_term_memory.cpp.obj	224bfa3c097ba0c3
-8	4423	7840425081509204	CMakeFiles/capa_core.dir/src/main.cpp.obj	bda7c4d55e228b3
-4424	8531	7840425122595673	capa_core.cp310-win_amd64.pyd	25ec4c28ef01976d
-41	4911	7841249779988280	CMakeFiles/capa_core.dir/src/short_term_memory.cpp.obj	224bfa3c097ba0c3
-36	5514	7841249786006512	CMakeFiles/capa_core.dir/src/main.cpp.obj	bda7c4d55e228b3
-5514	9885	7841249829727020	capa_core.cp310-win_amd64.pyd	25ec4c28ef01976d
 35	4179	7841757841758325	CMakeFiles/capa_core.dir/src/short_term_memory.cpp.obj	224bfa3c097ba0c3
 30	4770	7841757847638445	CMakeFiles/capa_core.dir/src/main.cpp.obj	bda7c4d55e228b3
 4770	9070	7841757890653314	capa_core.cp310-win_amd64.pyd	25ec4c28ef01976d
