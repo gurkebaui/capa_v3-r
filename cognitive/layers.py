@@ -2,6 +2,8 @@
 
 import logging
 import json
+
+from psutil import users
 import msgpack
 import ollama
 from memory.man import MemoryAccessNetwork
@@ -93,17 +95,14 @@ class ThinkingLayer3(BaseThinkingLayer):
 
 
 class ThinkingLayer4(BaseThinkingLayer):
-    def __init__(self, cpp_core: CPPCore, man: MemoryAccessNetwork | None = None):
+    def __init__(self, cpp_core: CPPCore, recursion_counter: int, man: MemoryAccessNetwork | None = None):
         super().__init__(model_name="dolphin3", cpp_core=cpp_core, man=man)
-        self.system_prompt = """
-        You are the 'Tactical Planner' layer. Your ONLY job is to create a reasoning plan for Layer 5. You do not respond to the user.
-        Analyze the user's request and the STM state. Create a clear, step-by-step plan that the final strategic layer should follow to solve the problem.
-        """
+        self.system_prompt = f"You are the 'Tactical Planner' layer. Your ONLY job is to create a reasoning plan for Layer 5. You do not respond to the user. Analyze the users's request and the STM state. Create a clear, step-by-step plan that the final strategic layer should follow to solve the problem. " if recursion_counter < 2 else "Look at the Input result given to you by layer 5 and look at the Input by the user and determine if what Layer 5 did was correct or not. If it was correct, give a nice output sentence and tell layer 5 to have a high confidence score. If it was not correct, analyze what went wrong and try to solve the problem.  "
     
     def think(self, graph_snapshot: bytes,  active_plans: list[str], emotion_context: str, internal_emotion_text: str, recursion_info: str, recursion_counter: int, input_text: str) -> dict:
         nodes, edges = msgpack.unpackb(graph_snapshot)
         formatted_graph = self._format_graph_for_prompt(nodes, edges)
-        user_input_display = f"- User's most recent input: {input_text}" if recursion_counter < 2 else ""
+        user_input_display = f"- User's most recent input: {input_text}" if recursion_counter < 2 else "- User's most recent input: {input_text} "
 
         dynamic_content = f"""
         **Data Provided:**
@@ -118,9 +117,9 @@ class ThinkingLayer4(BaseThinkingLayer):
         Create a reasoning plan for Layer 5 to follow.
         {{
             "internal_monologue": "My analysis of the user's request and why this plan is necessary. The previous attempt failed because...",
-            "plan_for_layer5": ["Step 1: ...", "Step 2: ...", "Step 3: ..., and so on"]
-        }}
-        """
+            "plan_for_layer5": ["Step 1: ...", "Step 2: ...", "Step 3: ..., and so on"""if recursion_counter < 2 else "your new salution with a mistake analysis and a confidence of your own""]"
+        "}}"
+        """"""
         return self._execute_llm_call(dynamic_content)
 
 
